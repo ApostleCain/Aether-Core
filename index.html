@@ -19,6 +19,22 @@
         .v-bar { width: 4px; background: var(--aether-cyan); border-radius: 2px; }
         .active-v { animation: pulse 0.6s infinite ease-in-out; }
         @keyframes pulse { 0%, 100% { height: 4px; } 50% { height: 20px; } }
+
+        /* --- INTERACTIVE BAR CSS --- */
+        input[type=range] { -webkit-appearance: none; background: transparent; cursor: pointer; width: 100%; }
+        input[type=range]:focus { outline: none; }
+        /* The Track */
+        input[type=range]::-webkit-slider-runnable-track { background: #111; height: 4px; border-radius: 2px; }
+        /* The Knob (The "Thingy") */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: var(--aether-cyan);
+            box-shadow: 0 0 10px var(--aether-cyan);
+            margin-top: -5px;
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col">
@@ -76,8 +92,10 @@
 
         <div class="w-2/4 flex flex-col items-center gap-2">
             <button id="play-pause" onclick="togglePlay()" class="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center hover:neon-border hover:neon-text transition-all">▶</button>
-            <div class="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
-                <div id="progress" class="h-full bg-cyan-500 w-0"></div>
+            <div class="w-full flex items-center gap-2">
+                <span id="time-current" class="text-[8px] text-zinc-500 w-8 text-right">0:00</span>
+                <input type="range" id="progress-bar" min="0" max="100" value="0" step="0.1">
+                <span id="time-duration" class="text-[8px] text-zinc-500 w-8">0:00</span>
             </div>
         </div>
 
@@ -90,8 +108,18 @@
         const audio = document.getElementById('core-audio');
         const libraryList = document.getElementById('library-list');
         const playlistContainer = document.getElementById('playlist-container');
+        const progressBar = document.getElementById('progress-bar');
+        const timeCurrent = document.getElementById('time-current');
+        const timeDuration = document.getElementById('time-duration');
         let globalLibrary = [];
         let playlists = {};
+
+        // Helper to format time
+        function formatTime(secs) {
+            const mins = Math.floor(secs / 60);
+            const s = Math.floor(secs % 60);
+            return `${mins}:${s < 10 ? '0' : ''}${s}`;
+        }
 
         // NAVIGATION LOGIC
         function changeSector(id) {
@@ -178,19 +206,22 @@
             else { audio.pause(); document.getElementById('play-pause').innerText = "▶"; }
         }
 
+        // UPDATE BAR AS SONG PLAYS
         audio.ontimeupdate = () => {
-            document.getElementById('progress').style.width = (audio.currentTime / audio.duration) * 100 + "%";
+            if (!isNaN(audio.duration)) {
+                const pct = (audio.currentTime / audio.duration) * 100;
+                progressBar.value = pct;
+                timeCurrent.innerText = formatTime(audio.currentTime);
+                timeDuration.innerText = formatTime(audio.duration);
+            }
         };
+
+        // SEEKING LOGIC: Move song when user slides the bar
+        progressBar.oninput = () => {
+            const seekTo = (progressBar.value / 100) * audio.duration;
+            audio.currentTime = seekTo;
+        };
+
     </script>
-    <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then(reg => console.log('Aether Core Offline: Active'))
-        .catch(err => console.log('Offline Protocol Failed', err));
-    });
-  }
-</script>
 </body>
 </html>
-
